@@ -12,51 +12,62 @@ namespace client
 
         static async Task Main(string[] args)
         {
-            Channel channel = new Channel(target, ChannelCredentials.Insecure);
-
-            await channel.ConnectAsync().ContinueWith((task) =>
+            try
             {
-                if (task.Status == TaskStatus.RanToCompletion)
-                    Console.WriteLine("The client connected successfully");
-            });
+                Channel channel = new Channel(target, ChannelCredentials.Insecure);
 
-            var client = new FindMaxService.FindMaxServiceClient(channel);
-
-            var stream = client.FindMax();
-
-            var responseReaderTask = Task.Run(async () => 
-            {
-                while (await stream.ResponseStream.MoveNext())
+                await channel.ConnectAsync().ContinueWith((task) =>
                 {
-                    Console.WriteLine($"Max: {stream.ResponseStream.Current.Max}");
-                }
-            });
+                    if (task.Status == TaskStatus.RanToCompletion)
+                        Console.WriteLine("The client connected successfully");
+                });
 
-            string key;
-       
-            do
-            {
-                Console.WriteLine(Environment.NewLine + "Digit a number or type 'ESC' to exit");
-                key = Console.ReadLine();
+                var client = new FindMaxService.FindMaxServiceClient(channel);
 
-                var isNumeric = int.TryParse(key, out int number);
+                var stream = client.FindMax();
 
-                if (key.ToLower() != esc && isNumeric)
+                var responseReaderTask = Task.Run(async () => 
                 {
-                    Console.WriteLine($"Sending: {number}");
-                    await stream.RequestStream.WriteAsync(new FindMaxRequest()
+                    while (await stream.ResponseStream.MoveNext())
                     {
-                        Number = number
-                    });
-                }
+                        Console.WriteLine($"Max: {stream.ResponseStream.Current.Max}");
+                    }
+                });
 
-            } while (key.ToLower() != esc);
+                string key;
+        
+                do
+                {
+                    Console.WriteLine(Environment.NewLine + "Digit a number or type 'ESC' to exit");
+                    key = Console.ReadLine();
 
-            await stream.RequestStream.CompleteAsync();
-            await responseReaderTask;
+                    var isNumeric = int.TryParse(key, out int number);
 
-            channel.ShutdownAsync().Wait();
-            Console.ReadLine();
+                    if (key.ToLower() != esc && isNumeric)
+                    {
+                        Console.WriteLine($"Sending: {number}");
+                        await stream.RequestStream.WriteAsync(new FindMaxRequest()
+                        {
+                            Number = number
+                        });
+                    }
+
+                } while (key.ToLower() != esc);
+
+                await stream.RequestStream.CompleteAsync();
+                await responseReaderTask;
+
+                channel.ShutdownAsync().Wait();
+                Console.ReadLine();
+            }
+            catch (RpcException e)
+            {
+                Console.WriteLine($"StatusCode: {e.Status.StatusCode} | Detail: {e.Status.Detail}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Something went wrong.");
+            }
         }
     }
 }
