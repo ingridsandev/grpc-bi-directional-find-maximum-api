@@ -1,6 +1,10 @@
 ﻿using FindMax;
+using Google.Protobuf.Reflection;
 using Grpc.Core;
+using Grpc.Reflection;
+using Grpc.Reflection.V1Alpha;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace server
@@ -17,7 +21,11 @@ namespace server
             {
                 server = new Server()
                 {
-                    Services = { FindMaxService.BindService(new FindMaxServiceImplementation()) },
+                    Services = 
+                    { 
+                        FindMaxService.BindService(new FindMaxServiceImplementation()),
+                        ServerReflection.BindService(new ReflectionServiceImpl(new List<ServiceDescriptor>() { FindMaxService.Descriptor }))
+                    },
                     Ports = { new ServerPort("localhost", Port, ServerCredentials.Insecure) }
                 };
 
